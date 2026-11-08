@@ -1,0 +1,41 @@
+# Clients are idle containers; run.sh starts emqtt-bench and netem inside them.
+x-client: &client
+  build: .
+  image: mqtt-bench-client
+  command: sleep infinity
+  volumes: [./certs:/certs:ro]
+
+services:
+  mqtt-broker:
+    image: emqx/emqx:6.3.2
+    networks: [pub, sub]
+    ulimits: {nofile: 1048576}
+    volumes: [./certs:/certs:ro]
+    environment:
+      EMQX_LISTENERS__TCP__DEFAULT__ENABLE: "false"
+      EMQX_LISTENERS__WS__DEFAULT__ENABLE: "false"
+      EMQX_LISTENERS__WSS__DEFAULT__ENABLE: "false"
+      EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERSIONS: '["tlsv1.3"]'
+      EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE: /certs/server.pem
+      EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE: /certs/server.key
+      EMQX_LISTENERS__QUIC__DEFAULT__ENABLE: "true"
+      EMQX_LISTENERS__QUIC__DEFAULT__SSL_OPTIONS__CERTFILE: /certs/server.pem
+      EMQX_LISTENERS__QUIC__DEFAULT__SSL_OPTIONS__KEYFILE: /certs/server.key
+    healthcheck:
+      test: emqx ctl status
+      interval: 3s
+      retries: 30
+
+  subscriber:
+    <<: *client
+    networks: [sub]
+
+  publisher:
+    <<: *client
+    networks: [pub]
+    cap_add: [NET_ADMIN]
+    ulimits: {nofile: 1048576}
+
+networks:
+  pub: {ipam: {config: [{subnet: 10.77.1.0/24}]}}
+  sub: {ipam: {config: [{subnet: 10.77.2.0/24}]}}

@@ -3,7 +3,7 @@ x-client: &client
   build: .
   image: mqtt-bench-client
   command: sleep infinity
-  volumes: [./certs:/certs:ro]
+  volumes: [./certs:/certs:ro, ./netem.sh:/netem.sh:ro]
 
 services:
   mqtt-broker:
